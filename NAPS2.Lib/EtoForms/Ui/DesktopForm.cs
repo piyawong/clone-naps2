@@ -8,6 +8,7 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.EtoForms.Widgets;
 using NAPS2.ImportExport.Images;
+using NAPS2.Platform;
 using NAPS2.Scan;
 
 namespace NAPS2.EtoForms.Ui;
@@ -574,7 +575,9 @@ public abstract class DesktopForm : EtoFormBase
 
     protected virtual void UpdateTitle(ScanProfile? defaultProfile)
     {
-        Title = string.Format(UiStrings.Naps2TitleFormat, defaultProfile?.DisplayName ?? UiStrings.Naps2FullName);
+        var profileName = defaultProfile?.DisplayName ?? UiStrings.Naps2FullName;
+        var port = ApplicationLifecycle.HttpPortOverride ?? 9000;
+        Title = string.Format(UiStrings.Naps2TitleFormat, $"{profileName} | http://localhost:{port}");
     }
 
     private void ListViewMouseWheel(object? sender, MouseEventArgs e)

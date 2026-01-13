@@ -3,6 +3,7 @@ using Eto.Drawing;
 using Eto.Forms;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.ImportExport;
 using NAPS2.ImportExport.Images;
@@ -37,8 +38,10 @@ public class DesktopController
     private readonly ISharedDeviceManager _sharedDeviceManager;
     private readonly ProcessCoordinator _processCoordinator;
     private readonly RecoveryManager _recoveryManager;
+    private readonly IProfileManager _profileManager;
     private readonly ImageTransfer _imageTransfer = new();
 
+    private ScanHttpServer? _scanHttpServer;
     private bool _closed;
     private bool _preInitialized;
     private bool _initialized;
@@ -54,7 +57,7 @@ public class DesktopController
         DesktopImagesController desktopImagesController, IDesktopScanController desktopScanController,
         DesktopFormProvider desktopFormProvider, IScannedImagePrinter scannedImagePrinter,
         ISharedDeviceManager sharedDeviceManager, ProcessCoordinator processCoordinator,
-        RecoveryManager recoveryManager)
+        RecoveryManager recoveryManager, IProfileManager profileManager)
     {
         _scanningContext = scanningContext;
         _imageList = imageList;
@@ -76,6 +79,7 @@ public class DesktopController
         _sharedDeviceManager = sharedDeviceManager;
         _processCoordinator = processCoordinator;
         _recoveryManager = recoveryManager;
+        _profileManager = profileManager;
     }
 
     public bool SkipRecoveryCleanup { get; set; }
@@ -93,6 +97,7 @@ public class DesktopController
         _initialized = true;
         _sharedDeviceManager.StartSharing();
         StartProcessCoordinator();
+        StartScanHttpServer();
         ShowStartupMessages();
         ShowRecoveryPrompt();
         ImportFilesFromCommandLine();
@@ -101,6 +106,26 @@ public class DesktopController
         SetFirstRunDate();
         ShowDonationOrReviewPrompt();
         ShowUpdatePrompt();
+    }
+
+    private void StartScanHttpServer()
+    {
+        if (_config.Get(c => c.DisableScanHttpServer)) return;
+
+        // Use command line override if provided, otherwise use config, otherwise default to 9000
+        var port = Platform.ApplicationLifecycle.HttpPortOverride
+            ?? _config.Get(c => c.ScanHttpServerPort);
+        if (port <= 0) port = 9000;
+
+        try
+        {
+            _scanHttpServer = new ScanHttpServer(_scanningContext.Logger, _desktopScanController, _profileManager, port);
+            _scanHttpServer.Start();
+        }
+        catch (Exception ex)
+        {
+            Log.ErrorException("Failed to start ScanHttpServer", ex);
+        }
     }
 
     private void ShowDonationOrReviewPrompt()
@@ -189,6 +214,7 @@ public class DesktopController
         if (_suspended) return;
         _processCoordinator.KillServer();
         _sharedDeviceManager.StopSharing();
+        _scanHttpServer?.Dispose();
         if (!SkipRecoveryCleanup && !_config.Get(c => c.KeepSession))
         {
             try

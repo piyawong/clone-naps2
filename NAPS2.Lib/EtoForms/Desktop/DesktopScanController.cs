@@ -17,6 +17,8 @@ public class DesktopScanController : IDesktopScanController
     private readonly DesktopFormProvider _desktopFormProvider;
     private readonly ThumbnailController _thumbnailController;
 
+    public bool IsScanning { get; private set; }
+
     public DesktopScanController(Naps2Config config, IProfileManager profileManager, IFormFactory formFactory,
         IScanPerformer scanPerformer, DesktopImagesController desktopImagesController,
         IDesktopSubFormController desktopSubFormController, DesktopFormProvider desktopFormProvider,
@@ -37,7 +39,8 @@ public class DesktopScanController : IDesktopScanController
         {
             NoAutoSave = _config.Get(c => c.DisableAutoSave),
             OcrParams = _config.OcrAfterScanningParams(),
-            ThumbnailSize = _thumbnailController.RenderSize
+            ThumbnailSize = _thumbnailController.RenderSize,
+            Modal = false  // Run scans in background by default
         };
 
     public async Task ScanWithDevice(string deviceID)
@@ -155,13 +158,21 @@ public class DesktopScanController : IDesktopScanController
 
     private async Task DoScan(ScanProfile profile)
     {
-        var images =
-            _scanPerformer.PerformScan(profile, DefaultScanParams(), _desktopFormProvider.DesktopForm.NativeHandle);
-        var imageCallback = _desktopImagesController.ReceiveScannedImage();
-        await foreach (var image in images)
+        IsScanning = true;
+        try
         {
-            imageCallback(image);
+            var images =
+                _scanPerformer.PerformScan(profile, DefaultScanParams(), _desktopFormProvider.DesktopForm.NativeHandle);
+            var imageCallback = _desktopImagesController.ReceiveScannedImage();
+            await foreach (var image in images)
+            {
+                imageCallback(image);
+            }
+            _desktopFormProvider.DesktopForm.BringToFront();
         }
-        _desktopFormProvider.DesktopForm.BringToFront();
+        finally
+        {
+            IsScanning = false;
+        }
     }
 }

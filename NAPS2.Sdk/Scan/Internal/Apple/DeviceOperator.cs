@@ -282,7 +282,17 @@ internal class DeviceOperator : ICScannerDeviceDelegate
 
     private Exception GetException(NSError error)
     {
-        return new DeviceException(error.LocalizedDescription);
+        // ICReturnDeviceFailedToOpenSession = -9927
+        // This typically means another app has exclusive access to the scanner
+        if (error.Code == -9927 ||
+            error.LocalizedDescription?.Contains("session", StringComparison.OrdinalIgnoreCase) == true ||
+            error.LocalizedDescription?.Contains("use", StringComparison.OrdinalIgnoreCase) == true ||
+            error.LocalizedDescription?.Contains("busy", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            _logger.LogWarning("Scanner appears to be in use by another application: {Error}", error.LocalizedDescription);
+            return new DeviceBusyException();
+        }
+        return new DeviceException(error.LocalizedDescription ?? "Unknown scanner error");
     }
 
     public override void DidRemoveDevice(ICDevice device)

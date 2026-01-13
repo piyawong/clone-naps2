@@ -216,6 +216,12 @@ public class CommonConfig
     [Common]
     public bool DisableScannerSharing { get; set; }
 
+    [Common]
+    public bool DisableScanHttpServer { get; set; }
+
+    [Common]
+    public int ScanHttpServerPort { get; set; }
+
     [User]
     public bool SidebarVisible { get; set; }
 

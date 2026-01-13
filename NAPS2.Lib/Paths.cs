@@ -47,6 +47,18 @@ public static class Paths
             AppDataPath = args[flagIndex + 1];
             IsTestAppDataPath = true;
         }
+        // Support --naps2-data flag for custom data directory (for multiple instances)
+        flagIndex = Array.IndexOf(args, "--naps2-data");
+        if (flagIndex >= 0 && flagIndex < args.Length - 1)
+        {
+            var customPath = args[flagIndex + 1];
+            // Expand ~ to home directory
+            if (customPath.StartsWith("~/") || customPath == "~")
+            {
+                customPath = customPath.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+            }
+            AppDataPath = customPath;
+        }
 
         TempPath = Path.Combine(AppDataPath, "temp");
         RecoveryPath = Path.Combine(AppDataPath, "recovery");

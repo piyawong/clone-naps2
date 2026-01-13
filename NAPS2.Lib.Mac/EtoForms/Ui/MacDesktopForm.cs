@@ -4,6 +4,7 @@ using NAPS2.EtoForms.Layout;
 using NAPS2.EtoForms.Mac;
 using NAPS2.EtoForms.Notifications;
 using NAPS2.EtoForms.Widgets;
+using NAPS2.Platform;
 using NAPS2.Scan;
 
 namespace NAPS2.EtoForms.Ui;
@@ -42,7 +43,9 @@ public class MacDesktopForm : DesktopForm
         Title = UiStrings.Naps2;
         if (OperatingSystem.IsMacOSVersionAtLeast(11))
         {
-            this.ToNative().Subtitle = defaultProfile?.DisplayName ?? UiStrings.Naps2FullName;
+            var profileName = defaultProfile?.DisplayName ?? UiStrings.Naps2FullName;
+            var port = ApplicationLifecycle.HttpPortOverride ?? 9000;
+            this.ToNative().Subtitle = $"{profileName} | http://localhost:{port}";
         }
     }
 

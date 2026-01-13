@@ -122,6 +122,8 @@ public class AutoSaver
             return (true, null);
         }
         string subPath = placeholders.Substitute(settings.FilePath, true, i);
+        Log.Info($"[AutoSaver] Original FilePath: {settings.FilePath}");
+        Log.Info($"[AutoSaver] Substituted subPath: {subPath}");
         if (settings.PromptForFilePath)
         {
             string? newPath = null!;
@@ -137,6 +139,7 @@ public class AutoSaver
         // TODO: This placeholder handling is complex and wrong in some cases (e.g. FilePerScan with ext = "jpg")
         // TODO: Maybe have initial placeholders that replace date, then rely on the ops to increment the file num
         var extension = Path.GetExtension(subPath);
+        Log.Info($"[AutoSaver] Detected extension: {extension}");
         if (extension != null && extension.Equals(".pdf", StringComparison.InvariantCultureIgnoreCase))
         {
             if (File.Exists(subPath))

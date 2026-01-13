@@ -75,6 +75,8 @@ internal class SavePdfOperation : OperationBase
                 foreach (var imagesForFile in imagesByFile)
                 {
                     var currentFileName = placeholders.Substitute(fileName, true, i, singleFile ? 0 : digits);
+                    Log.Info($"[SavePdfOperation] Original fileName: {fileName}");
+                    Log.Info($"[SavePdfOperation] currentFileName after substitute: {currentFileName}");
                     // TODO: Overwrite prompt non-single file?
                     Status.StatusText = string.Format(MiscResources.SavingFormat, Path.GetFileName(currentFileName));
                     InvokeStatusChanged();
@@ -88,6 +90,7 @@ internal class SavePdfOperation : OperationBase
                     result = await _pdfExporter.Export(currentFileName, imagesForFile,
                         new PdfExportParams(pdfSettings.Metadata, pdfSettings.Encryption,
                             pdfSettings.Compat), ocrParams, progress);
+                    Log.Info($"[SavePdfOperation] After export, checking if file exists at: {currentFileName}");
                     if (!result || CancelToken.IsCancellationRequested)
                     {
                         break;

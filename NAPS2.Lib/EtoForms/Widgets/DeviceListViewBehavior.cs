@@ -19,7 +19,7 @@ public class DeviceListViewBehavior : ListViewBehavior<ScanDevice>
 
     public void SetIconName(ScanDevice item, string iconName) => _iconNameMap[item] = iconName;
 
-    public override string GetLabel(ScanDevice item) => item.Name;
+    public override string GetLabel(ScanDevice item) => $"{item.Name}\n({item.ID})";
 
     public override Image GetImage(IListView<ScanDevice> listView, ScanDevice item)
     {

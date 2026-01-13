@@ -14,6 +14,16 @@ public abstract class ApplicationLifecycle
 
     private bool _unregisterSharingService;
 
+    /// <summary>
+    /// HTTP port override from command line (--http-port).
+    /// </summary>
+    public static int? HttpPortOverride { get; private set; }
+
+    /// <summary>
+    /// Default profile name from command line (--profile).
+    /// </summary>
+    public static string? ProfileOverride { get; private set; }
+
     protected ApplicationLifecycle(ProcessCoordinator processCoordinator, IOsServiceManager serviceManager,
         Naps2Config config)
     {
@@ -34,6 +44,21 @@ public abstract class ApplicationLifecycle
                 setsid();
             }
             _serviceManager.Unregister();
+        }
+
+        // Parse --http-port and --profile flags
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i].Equals("--http-port", StringComparison.InvariantCultureIgnoreCase) &&
+                int.TryParse(args[i + 1], out var port) && port > 0 && port <= 65535)
+            {
+                HttpPortOverride = port;
+            }
+            else if (args[i].Equals("--profile", StringComparison.InvariantCultureIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(args[i + 1]))
+            {
+                ProfileOverride = args[i + 1];
+            }
         }
     }
 

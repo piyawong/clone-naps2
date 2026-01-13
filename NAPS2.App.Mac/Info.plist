@@ -91,5 +91,13 @@
       </dict>
     </array>
 
+    <!-- Privacy - Camera Usage Description (required for scanning) -->
+    <key>NSCameraUsageDescription</key>
+    <string>NAPS2 needs access to your camera or scanner to scan documents.</string>
+
+    <!-- Privacy - USB Access (for USB scanners) -->
+    <key>com.apple.security.device.usb</key>
+    <true/>
+
   </dict>
 </plist>

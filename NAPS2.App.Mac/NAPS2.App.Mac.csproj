@@ -11,6 +11,9 @@
     <RuntimeIdentifiers Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx-x64;osx-arm64</RuntimeIdentifiers>
     <TrimMode>partial</TrimMode>
 
+    <!-- Allow building with newer Xcode versions -->
+    <_IsMatchingXcode>true</_IsMatchingXcode>
+
     <Title>NAPS2 - Not Another PDF Scanner</Title>
     <Product>NAPS2 - Not Another PDF Scanner</Product>
   </PropertyGroup>

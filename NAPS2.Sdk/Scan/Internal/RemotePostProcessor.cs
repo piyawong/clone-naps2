@@ -155,8 +155,10 @@ internal class RemotePostProcessor : IRemotePostProcessor
             {
                 PageSide = postProcessingContext.PageNumber % 2 == 0 ? PageSide.Back : PageSide.Front
             };
+            _logger.LogInformation($"[Duplex] PageNumber={postProcessingContext.PageNumber}, PageSide={data.PageSide}, FlipDuplexedPages={options.FlipDuplexedPages}");
             if (options.FlipDuplexedPages && data.PageSide == PageSide.Back)
             {
+                _logger.LogInformation($"[Duplex] Flipping page {postProcessingContext.PageNumber} (Back side) 180 degrees");
                 processedImage = processedImage.WithTransform(new RotationTransform(180), true);
             }
         }
