@@ -37,37 +37,95 @@ public class AutoSaver
     {
         return AsyncProducers.RunProducer<ProcessedImage>(async produceImage =>
         {
-            var imageList = new List<ProcessedImage>();
+            int imageIndex = 0;
+            var placeholders = Placeholders.All.WithDate(DateTime.Now);
+
             try
             {
                 await foreach (var img in images)
                 {
-                    imageList.Add(img);
+                    // Save each image immediately as it arrives
+                    bool success = await SaveSingleImage(settings, placeholders, imageIndex++, img);
+
+                    if (!success)
+                    {
+                        Log.Error($"Failed to save image {imageIndex}");
+                    }
+
+                    // Pass image through if not clearing after save
                     if (!settings.ClearImagesAfterSaving)
                     {
                         produceImage(img.Clone());
                     }
-                }
-            }
-            finally
-            {
-                if (!await InternalSave(settings, imageList) && settings.ClearImagesAfterSaving)
-                {
-                    // Fallback in case auto save failed; pipe all the images back at once
-                    foreach (var img in imageList)
-                    {
-                        produceImage(img);
-                    }
-                }
-                else
-                {
-                    foreach (var img in imageList)
+
+                    // Dispose original image if clearing after save
+                    if (settings.ClearImagesAfterSaving)
                     {
                         img.Dispose();
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Log.ErrorException(MiscResources.AutoSaveError, ex);
+                // Don't show error dialog - it blocks UI thread
+                // _errorOutput.DisplayError(MiscResources.AutoSaveError, ex);
+            }
         });
+    }
+
+    private async Task<bool> SaveSingleImage(AutoSaveSettings settings, Placeholders placeholders, int imageIndex, ProcessedImage image)
+    {
+        try
+        {
+            string subPath = placeholders.Substitute(settings.FilePath, true, imageIndex);
+            Log.Info($"[AutoSaver] Saving image {imageIndex}: {subPath}");
+
+            if (settings.PromptForFilePath)
+            {
+                string? newPath = null!;
+                if (Invoker.Current.InvokeGet(() => _dialogHelper.PromptToSavePdfOrImage(subPath, out newPath)))
+                {
+                    subPath = placeholders.Substitute(newPath!, true, imageIndex);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            var extension = Path.GetExtension(subPath);
+            Log.Info($"[AutoSaver] Detected extension: {extension}");
+
+            // For JPEG/PNG/etc, save immediately (not PDF which requires all pages)
+            if (extension != null && !extension.Equals(".pdf", StringComparison.InvariantCultureIgnoreCase))
+            {
+                var op = new SaveImagesOperation(_overwritePrompt, _imageContext);
+                if (op.Start(subPath, placeholders, new[] { image }, _config.Get(c => c.ImageSettings)))
+                {
+                    // Run in background - no progress dialog
+                    // _operationProgress.ShowProgress(op);  // Commented out to run silently
+                }
+                bool success = await op.Success;
+                if (success)
+                {
+                    _imageList.MarkSaved(_imageList.CurrentState, new[] { image });
+                }
+                return success;
+            }
+            else
+            {
+                Log.Error("[AutoSaver] PDF format requires buffering all images. Consider using image format (JPG/PNG) for immediate save.");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.ErrorException($"[AutoSaver] Error saving image {imageIndex}", ex);
+            // Don't show error dialog - it blocks UI thread during auto save
+            // _errorOutput.DisplayError(MiscResources.AutoSaveError, ex);
+            return false;
+        }
     }
 
     private async Task<bool> InternalSave(AutoSaveSettings settings, List<ProcessedImage> images)

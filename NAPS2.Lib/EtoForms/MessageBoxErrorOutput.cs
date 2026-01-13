@@ -15,13 +15,17 @@ public class MessageBoxErrorOutput : ErrorOutput
 
     public override void DisplayError(string errorMessage)
     {
-        Invoker.Current.Invoke(() =>
-            MessageBox.Show(errorMessage, MiscResources.Error, MessageBoxButtons.OK, MessageBoxType.Error));
+        // Don't show dialog - log only to avoid blocking UI thread
+        Log.Error($"Error: {errorMessage}");
+        // Invoker.Current.Invoke(() =>
+        //     MessageBox.Show(errorMessage, MiscResources.Error, MessageBoxButtons.OK, MessageBoxType.Error));
     }
 
     public override void DisplayError(string errorMessage, string details)
     {
-        Invoker.Current.Invoke(() => ShowErrorWithDetails(errorMessage, details));
+        // Don't show dialog - log only to avoid blocking UI thread
+        Log.Error($"Error: {errorMessage}\nDetails: {details}");
+        // Invoker.Current.Invoke(() => ShowErrorWithDetails(errorMessage, details));
     }
 
     public override void DisplayError(string errorMessage, Exception exception)
@@ -31,9 +35,11 @@ public class MessageBoxErrorOutput : ErrorOutput
             exception is ScanDriverUnknownException { InnerException: { } inner }
                 ? inner
                 : exception;
+        // Don't show dialog - log only to avoid blocking UI thread
+        Log.ErrorException(errorMessage, displayException);
         // Note we don't want to use the ToStringDemystified() helper
         // https://github.com/benaadams/Ben.Demystifier/issues/85
-        Invoker.Current.Invoke(() => ShowErrorWithDetails(errorMessage, displayException.Demystify().ToString()));
+        // Invoker.Current.Invoke(() => ShowErrorWithDetails(errorMessage, displayException.Demystify().ToString()));
     }
 
     private void ShowErrorWithDetails(string errorMessage, string details)
