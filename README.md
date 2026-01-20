@@ -40,3 +40,41 @@ NAPS2 is licensed under the GNU GPL 2.0 (or later). Some projects have additiona
 - NAPS2.Internals - GNU LGPL 2.1 (or later)
 - NAPS2.Sdk - GNU LGPL 2.1 (or later)
 - NAPS2.Sdk.Samples - MIT
+
+## Custom Changes (Roll Management Fork)
+
+This fork includes custom modifications for roll document scanning workflow:
+
+### Scanner Error Handling Enhancement
+**Files Modified:**
+- `NAPS2.Sdk/Scan/Internal/Apple/DeviceOperator.cs`
+- `NAPS2.Lib/ImportExport/AutoSaver.cs`
+
+**Changes:**
+1. **Flush Pending Images Before Error Propagation**
+   - When a scanner error occurs during roll scanning (e.g., paper jam, cover open), the system now ensures all previously scanned images are saved before throwing the error
+   - Previously, images that were scanned but still in the internal callback queue would be lost when a subsequent page encountered an error
+   - Implementation: Modified `DeviceOperator.Scan()` to catch scan exceptions, wait for `_writeToCallback` to complete (flushing all pending images), then rethrow the exception
+
+2. **Enhanced Logging for Debugging**
+   - Added detailed logging markers in AutoSaver for tracking scan and save pipeline:
+     - ✅ `RECEIVED` - Image received from scanner
+     - 💾 `START SAVING` - Begin save operation
+     - ✅ `SAVED` - Save completed successfully
+     - 📤 `PRODUCED` - Image sent to UI
+     - ⏭️ `COMPLETED` - Processing finished
+     - ⚠️ `EXCEPTION` - Error occurred with statistics
+
+3. **HTTP Server CORS Support**
+   - Added CORS headers support for cross-origin requests
+   - Enables web-based management interfaces to communicate with local scanner instances
+
+### Use Case
+These changes are designed for high-volume roll document scanning scenarios where:
+- Multiple pages are scanned continuously
+- Scanner errors may occur mid-batch (paper jams, document feeding issues)
+- All successfully scanned pages must be preserved even when errors occur
+- Web-based monitoring and control is required
+
+### Build Configuration
+See `.claude/claude.md` for detailed build and deployment instructions for the roll management setup.

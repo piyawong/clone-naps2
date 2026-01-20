@@ -10,6 +10,7 @@ public interface IProfileManager
     void Mutate(ListMutation<ScanProfile> mutation, ListSelection<ScanProfile> selection);
     ScanProfile? DefaultProfile { get; set; }
     void Load();
+    void Reload();
     void Save();
 
     event EventHandler ProfilesUpdated;

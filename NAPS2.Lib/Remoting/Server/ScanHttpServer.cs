@@ -156,6 +156,9 @@ public class ScanHttpServer : IDisposable
 
         _logger.LogInformation("Scan triggered via HTTP with profile: {Profile}", profileName ?? "default");
 
+        // Reload profiles from disk to get latest settings
+        _profileManager.Reload();
+
         // Find profile by name if specified
         Scan.ScanProfile? profile = null;
         if (!string.IsNullOrEmpty(profileName))

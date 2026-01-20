@@ -42,6 +42,10 @@ public class StubProfileManager : IProfileManager
     {
     }
 
+    public void Reload()
+    {
+    }
+
     public void Save()
     {
         ProfilesUpdated?.Invoke(this, EventArgs.Empty);

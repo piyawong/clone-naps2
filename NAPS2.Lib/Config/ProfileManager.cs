@@ -98,6 +98,15 @@ public class ProfileManager : IProfileManager
         }
     }
 
+    public void Reload()
+    {
+        lock (this)
+        {
+            _profiles = null;  // Clear cache
+            _profiles = GetProfiles();
+        }
+    }
+
     public void Save()
     {
         Load();
