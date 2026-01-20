@@ -427,7 +427,19 @@ internal class DeviceOperator : ICScannerDeviceDelegate
             _device.MaxMemoryBandSize = 65536;
             _logger.LogDebug("ICC: Requesting scan");
             _device.RequestScan();
-            await _scanSuccessTcs.Task;
+
+            Exception? scanException = null;
+            try
+            {
+                await _scanSuccessTcs.Task;
+            }
+            catch (Exception ex)
+            {
+                // Capture the error but don't throw yet - we need to flush pending images first
+                scanException = ex;
+                _logger.LogDebug("ICC: Scan error occurred: {Error}, will flush pending images first", ex.Message);
+            }
+
             if (_writeToCallback == null && _unit is ICScannerFunctionalUnitDocumentFeeder { DocumentLoaded: false })
             {
                 _logger.LogDebug("ICC: No pages in feeder");
@@ -435,12 +447,31 @@ internal class DeviceOperator : ICScannerDeviceDelegate
             }
             if (_writeToCallback != null)
             {
-                _logger.LogDebug("ICC: Waiting for scan results");
-                await _writeToCallback;
+                _logger.LogDebug("ICC: Waiting for scan results (pending images to flush)");
+                try
+                {
+                    await _writeToCallback;
+                    _logger.LogDebug("ICC: All pending images flushed successfully");
+                }
+                catch (Exception callbackEx)
+                {
+                    _logger.LogDebug("ICC: Error while flushing images: {Error}", callbackEx.Message);
+                    // If we don't have a scan exception, use the callback exception
+                    scanException ??= callbackEx;
+                }
             }
+
             _logger.LogDebug("ICC: Closing session");
             _device.RequestCloseSession();
             await _closeTcs.Task;
+
+            // Now throw the error if there was one
+            if (scanException != null)
+            {
+                _logger.LogDebug("ICC: Scan completed with error after flushing images");
+                throw scanException;
+            }
+
             _logger.LogDebug("ICC: Scan success");
         }
         catch (TaskCanceledException)

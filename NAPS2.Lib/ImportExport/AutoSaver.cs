@@ -37,25 +37,36 @@ public class AutoSaver
     {
         return AsyncProducers.RunProducer<ProcessedImage>(async produceImage =>
         {
-            int imageIndex = 0;
+            // Find the next file number to avoid overwriting existing files
+            int imageIndex = GetNextFileNumber(settings.FilePath);
             var placeholders = Placeholders.All.WithDate(DateTime.Now);
+
+            Log.Info($"[AutoSaver] Starting save with imageIndex={imageIndex}");
 
             try
             {
                 await foreach (var img in images)
                 {
-                    // Save each image immediately as it arrives
-                    bool success = await SaveSingleImage(settings, placeholders, imageIndex++, img);
+                    Log.Info($"[AutoSaver] ✅ RECEIVED image {imageIndex} from scanner - entering save pipeline");
 
-                    if (!success)
+                    // Save each image immediately as it arrives
+                    Log.Info($"[AutoSaver] 💾 START SAVING image {imageIndex}");
+                    bool success = await SaveSingleImage(settings, placeholders, imageIndex, img);
+
+                    if (success)
                     {
-                        Log.Error($"Failed to save image {imageIndex}");
+                        Log.Info($"[AutoSaver] ✅ SAVED image {imageIndex} successfully");
+                    }
+                    else
+                    {
+                        Log.Error($"[AutoSaver] ❌ FAILED to save image {imageIndex}");
                     }
 
                     // Pass image through if not clearing after save
                     if (!settings.ClearImagesAfterSaving)
                     {
                         produceImage(img.Clone());
+                        Log.Info($"[AutoSaver] 📤 PRODUCED image {imageIndex} to UI");
                     }
 
                     // Dispose original image if clearing after save
@@ -63,15 +74,63 @@ public class AutoSaver
                     {
                         img.Dispose();
                     }
+
+                    imageIndex++;
+                    Log.Info($"[AutoSaver] ⏭️  COMPLETED processing image {imageIndex - 1}, ready for next");
                 }
+
+                Log.Info($"[AutoSaver] ✅ ALL IMAGES PROCESSED - total: {imageIndex}");
             }
             catch (Exception ex)
             {
-                Log.ErrorException(MiscResources.AutoSaveError, ex);
+                Log.ErrorException($"[AutoSaver] ⚠️ EXCEPTION at imageIndex={imageIndex} - {MiscResources.AutoSaveError}", ex);
+                Log.Error($"[AutoSaver] 📊 STATS: Received up to image {imageIndex}, some may not be saved yet");
                 // Don't show error dialog - it blocks UI thread
                 // _errorOutput.DisplayError(MiscResources.AutoSaveError, ex);
             }
         });
+    }
+
+    private int GetNextFileNumber(string filePathTemplate)
+    {
+        try
+        {
+            // Extract directory path from template
+            var directory = Path.GetDirectoryName(filePathTemplate);
+            if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+            {
+                return 0;
+            }
+
+            // Get file extension from template
+            var extension = Path.GetExtension(filePathTemplate);
+            if (string.IsNullOrEmpty(extension))
+            {
+                return 0;
+            }
+
+            // Find all existing files with the same extension
+            var files = Directory.GetFiles(directory, $"*{extension}");
+
+            int maxNumber = -1;
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                // Try to parse the number from filename (e.g., "0001" → 1)
+                if (int.TryParse(fileName, out int number))
+                {
+                    maxNumber = Math.Max(maxNumber, number);
+                }
+            }
+
+            // Return next number (0 if no files exist)
+            return maxNumber + 1;
+        }
+        catch (Exception ex)
+        {
+            Log.ErrorException("[AutoSaver] Error finding next file number", ex);
+            return 0;
+        }
     }
 
     private async Task<bool> SaveSingleImage(AutoSaveSettings settings, Placeholders placeholders, int imageIndex, ProcessedImage image)
@@ -79,7 +138,7 @@ public class AutoSaver
         try
         {
             string subPath = placeholders.Substitute(settings.FilePath, true, imageIndex);
-            Log.Info($"[AutoSaver] Saving image {imageIndex}: {subPath}");
+            Log.Info($"[AutoSaver] 🔧 SaveSingleImage ENTER: image {imageIndex} → {subPath}");
 
             if (settings.PromptForFilePath)
             {
@@ -107,9 +166,11 @@ public class AutoSaver
                     // _operationProgress.ShowProgress(op);  // Commented out to run silently
                 }
                 bool success = await op.Success;
+                Log.Info($"[AutoSaver] 🔧 SaveSingleImage: SaveImagesOperation completed for image {imageIndex}, success={success}");
                 if (success)
                 {
                     _imageList.MarkSaved(_imageList.CurrentState, new[] { image });
+                    Log.Info($"[AutoSaver] 🔧 SaveSingleImage: Marked image {imageIndex} as saved in ImageList");
                 }
                 return success;
             }
