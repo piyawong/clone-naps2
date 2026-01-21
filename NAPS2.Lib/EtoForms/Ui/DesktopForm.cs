@@ -40,6 +40,7 @@ public abstract class DesktopForm : EtoFormBase
     private readonly NotificationArea _notificationArea;
     protected IListView<UiImage> _listView;
     private ImageListSyncer? _imageListSyncer;
+    private Label _profileNameLabel = new();
 
     public DesktopForm(
         Naps2Config config,
@@ -125,6 +126,15 @@ public abstract class DesktopForm : EtoFormBase
         EtoPlatform.Current.AttachDpiDependency(this, _ =>
             MinimumSize = Size.Round(new SizeF(600, 300) * EtoPlatform.Current.GetLayoutScaleFactor(this)));
 
+        // Configure profile name label - display in center
+        var defaultProfile = _profileManager.DefaultProfile;
+        _profileNameLabel.Text = defaultProfile?.DisplayName ?? "No Profile";
+        _profileNameLabel.Font = new Font(SystemFont.Bold, 64);
+        _profileNameLabel.TextColor = new Color(0.7f, 0.7f, 0.7f, 0.5f); // Medium gray with transparency
+        _profileNameLabel.TextAlignment = TextAlignment.Center;
+        _profileNameLabel.VerticalAlignment = VerticalAlignment.Center;
+        _profileNameLabel.BackgroundColor = Colors.Transparent;
+
         LayoutController.RootPadding = 0;
         LayoutController.Content = L.LeftPanel(
             Config.Get(c => c.HiddenButtons).HasFlag(ToolbarButtons.Sidebar)
@@ -133,6 +143,16 @@ public abstract class DesktopForm : EtoFormBase
             L.Overlay(
                 // For WinForms, we add 1px of top padding to give us room to draw a border above the listview
                 _listView.Control.Padding(top: EtoPlatform.Current.IsWinForms ? 1 : 0),
+                // Profile name overlay in center
+                L.Column(
+                    C.Filler(),
+                    L.Row(
+                        C.Filler(),
+                        _profileNameLabel,
+                        C.Filler()
+                    ),
+                    C.Filler()
+                ),
                 L.Column(
                     C.Filler(),
                     L.Row(
@@ -578,6 +598,7 @@ public abstract class DesktopForm : EtoFormBase
         var profileName = defaultProfile?.DisplayName ?? UiStrings.Naps2FullName;
         var port = ApplicationLifecycle.HttpPortOverride ?? 9000;
         Title = string.Format(UiStrings.Naps2TitleFormat, $"{profileName} | http://localhost:{port}");
+        _profileNameLabel.Text = profileName;
     }
 
     private void ListViewMouseWheel(object? sender, MouseEventArgs e)
