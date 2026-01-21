@@ -431,7 +431,18 @@ internal class DeviceOperator : ICScannerDeviceDelegate
             Exception? scanException = null;
             try
             {
-                await _scanSuccessTcs.Task;
+                // Add 60 second timeout for scanner operation
+                var scanTask = _scanSuccessTcs.Task;
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(60));
+                var completedTask = await Task.WhenAny(scanTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    _logger.LogError("ICC: Scanner operation timeout after 60 seconds - no response from scanner");
+                    throw new DeviceException("Scanner timeout: No response from scanner after 60 seconds");
+                }
+
+                await scanTask; // Re-await to get exceptions if any
             }
             catch (Exception ex)
             {
@@ -450,7 +461,18 @@ internal class DeviceOperator : ICScannerDeviceDelegate
                 _logger.LogDebug("ICC: Waiting for scan results (pending images to flush)");
                 try
                 {
-                    await _writeToCallback;
+                    // Add 30 second timeout for image callback
+                    var callbackTask = _writeToCallback;
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+                    var completedTask = await Task.WhenAny(callbackTask, timeoutTask);
+
+                    if (completedTask == timeoutTask)
+                    {
+                        _logger.LogError("ICC: Image callback timeout after 30 seconds");
+                        throw new DeviceException("Image processing timeout: Failed to process scanned images within 30 seconds");
+                    }
+
+                    await callbackTask; // Re-await to get exceptions if any
                     _logger.LogDebug("ICC: All pending images flushed successfully");
                 }
                 catch (Exception callbackEx)
