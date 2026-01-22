@@ -116,6 +116,7 @@ public class ScanHttpServer : IDisposable
             {
                 ("POST", "/scan") => await HandleScan(null),
                 ("POST", "/scan/default") => await HandleScan(null),
+                ("POST", "/restart") => HandleRestart(),
                 ("GET", "/profiles") => HandleGetProfiles(),
                 ("GET", "/status") => HandleGetStatus(),
                 ("GET", "/health") => new { status = "ok" },
@@ -155,9 +156,11 @@ public class ScanHttpServer : IDisposable
         }
 
         _logger.LogInformation("Scan triggered via HTTP with profile: {Profile}", profileName ?? "default");
+        Log.Info($"🔴 [HTTP] HandleScan ENTER, profile: {profileName ?? "default"}");
 
         // Reload profiles from disk to get latest settings
         _profileManager.Reload();
+        Log.Info("🔴 [HTTP] Profiles reloaded");
 
         // Find profile by name if specified
         Scan.ScanProfile? profile = null;
@@ -173,8 +176,10 @@ public class ScanHttpServer : IDisposable
         }
 
         // Run scan on UI thread
+        Log.Info("🔴 [HTTP] About to InvokeDispatch scan");
         Invoker.Current.InvokeDispatch(async () =>
         {
+            Log.Info("🔴 [HTTP] Inside InvokeDispatch, calling ScanController");
             if (profile != null)
             {
                 await _scanController.ScanWithProfile(profile);
@@ -183,8 +188,10 @@ public class ScanHttpServer : IDisposable
             {
                 await _scanController.ScanDefault();
             }
+            Log.Info("🔴 [HTTP] ScanController completed");
         });
 
+        Log.Info("🔴 [HTTP] HandleScan returning success response");
         return Task.FromResult<object>(new
         {
             success = true,
@@ -227,6 +234,25 @@ public class ScanHttpServer : IDisposable
             scanner_connected = scannerConnected,
             profile = profile?.DisplayName ?? "none",
             device = profile?.Device?.Name ?? "none"
+        };
+    }
+
+    private object HandleRestart()
+    {
+        _logger.LogInformation("🔴 Restart requested via HTTP - exiting application");
+        Log.Info("🔴 Restart requested via HTTP - application will exit in 1 second");
+
+        // Exit after a short delay to allow response to be sent
+        Task.Run(async () =>
+        {
+            await Task.Delay(1000);
+            Environment.Exit(0);
+        });
+
+        return new
+        {
+            success = true,
+            message = "Application restarting"
         };
     }
 

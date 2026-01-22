@@ -103,6 +103,8 @@ internal class ScanPerformer : IScanPerformer
         var controller = CreateScanController(scanParams);
         var op = new ScanOperation(options);
 
+        Log.Info($"🟢 [SCAN START] Profile: {scanProfile.DisplayName}, Device: {options.Device?.Name}");
+
         controller.PageStart += (sender, args) => op.NextPage(args.PageNumber);
         controller.ScanEnd += (sender, args) =>
         {
@@ -131,7 +133,9 @@ internal class ScanPerformer : IScanPerformer
         ShowOperation(op, options, scanParams);
         cancelToken.Register(op.Cancel);
 
+        Log.Info("🔵 [BEFORE SCAN] About to call controller.Scan");
         var images = controller.Scan(options, op.CancelToken);
+        Log.Info("🟣 [AFTER SCAN] controller.Scan returned IAsyncEnumerable");
 
         if (scanProfile.EnableAutoSave && scanProfile.AutoSaveSettings != null && !scanParams.NoAutoSave)
         {
@@ -141,11 +145,14 @@ internal class ScanPerformer : IScanPerformer
         int pageCount = 0;
         try
         {
+            Log.Info("🟡 [ENUMERATE START] Starting to enumerate images");
             await foreach (var image in images)
             {
                 pageCount++;
+                Log.Info($"🟢 [IMAGE RECEIVED] Image #{pageCount} received from scanner");
                 yield return image;
             }
+            Log.Info($"🔵 [ENUMERATE DONE] All images enumerated, total: {pageCount}");
         }
         finally
         {

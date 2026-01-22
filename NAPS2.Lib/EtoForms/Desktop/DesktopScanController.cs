@@ -158,21 +158,57 @@ public class DesktopScanController : IDesktopScanController
 
     private async Task DoScan(ScanProfile profile)
     {
+        Log.Info($"🟠 [DoScan ENTER] Profile: {profile.DisplayName}");
         IsScanning = true;
         try
         {
+            Log.Info("🟠 [DoScan] Calling PerformScan");
             var images =
                 _scanPerformer.PerformScan(profile, DefaultScanParams(), _desktopFormProvider.DesktopForm.NativeHandle);
+            Log.Info("🟠 [DoScan] PerformScan returned, getting imageCallback");
             var imageCallback = _desktopImagesController.ReceiveScannedImage();
-            await foreach (var image in images)
+            Log.Info("🟠 [DoScan] Starting await foreach loop");
+
+            var enumerator = images.GetAsyncEnumerator();
+            try
             {
-                imageCallback(image);
+                while (true)
+                {
+                    // Add 90 second timeout for each image
+                    var moveNextTask = enumerator.MoveNextAsync();
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(90));
+                    var completedTask = await Task.WhenAny(moveNextTask.AsTask(), timeoutTask);
+
+                    if (completedTask == timeoutTask)
+                    {
+                        Log.Error("🔴 [DoScan TIMEOUT] No image received from scanner after 90 seconds - breaking scan loop");
+                        break;
+                    }
+
+                    if (!await moveNextTask)
+                    {
+                        // No more images
+                        break;
+                    }
+
+                    var image = enumerator.Current;
+                    Log.Info("🟠 [DoScan] Received image in DoScan, calling imageCallback");
+                    imageCallback(image);
+                }
             }
+            finally
+            {
+                await enumerator.DisposeAsync();
+            }
+
+            Log.Info("🟠 [DoScan] Foreach completed, bringing form to front");
             _desktopFormProvider.DesktopForm.BringToFront();
+            Log.Info("🟠 [DoScan] DoScan completed successfully");
         }
         finally
         {
             IsScanning = false;
+            Log.Info("🟠 [DoScan EXIT] IsScanning set to false");
         }
     }
 }
