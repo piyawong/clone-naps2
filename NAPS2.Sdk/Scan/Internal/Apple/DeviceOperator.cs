@@ -32,6 +32,8 @@ internal class DeviceOperator : ICScannerDeviceDelegate
     private readonly TaskCompletionSource _closeTcs = new();
     private Task? _writeToCallback;
     private MemoryStream? _buffer;
+    private int _receivedBandCount = 0;
+    private int _completedImageCount = 0;
 
     public DeviceOperator(ScanningContext scanningContext, ICScannerDevice device, DeviceReader reader,
         ScanOptions options, CancellationToken cancelToken, IScanEvents scanEvents, Action<IMemoryImage> callback)
@@ -75,7 +77,13 @@ internal class DeviceOperator : ICScannerDeviceDelegate
     public override void DidReceiveStatusInformation(ICDevice device, NSDictionary<NSString, NSObject> status)
     {
         var state = status[ICStatusNotificationKeys.NotificationKey] as NSString;
-        _logger.LogDebug("DidReceiveStatusInformation {State}", state);
+        Console.Error.WriteLine($"📊 [STATUS] state={state}, images so far={_completedImageCount}, ScanInProgress={_unit?.ScanInProgress ?? false}");
+
+        // Log all status keys for debugging
+        foreach (var key in status.Keys)
+        {
+            Console.Error.WriteLine($"📊 [STATUS]   {key} = {status[key]}");
+        }
 
         if (state == ICScannerStatus.WarmingUp)
         {
@@ -83,13 +91,21 @@ internal class DeviceOperator : ICScannerDeviceDelegate
         }
         if (_cancelTcs != null && !_unit!.ScanInProgress)
         {
+            Console.Error.WriteLine("📊 [STATUS] Cancel TCS triggered - scan no longer in progress");
             _cancelTcs.SetResult();
         }
     }
 
     public override void DidEncounterError(ICDevice device, NSError? error)
     {
-        _logger.LogDebug("DidEncounterError {Error}", error);
+        Console.Error.WriteLine($"❌ [ERROR] DidEncounterError at image {_completedImageCount}: code={error?.Code}, domain={error?.Domain}, desc={error?.Description}");
+        if (error?.UserInfo != null)
+        {
+            foreach (var key in error.UserInfo.Keys)
+            {
+                Console.Error.WriteLine($"❌ [ERROR]   UserInfo: {key} = {error.UserInfo[key]}");
+            }
+        }
         var ex = error != null ? new DeviceException(error.Description) : new DeviceException();
         // TODO: Put these in a list or something
         _openSessionTcs.TrySetException(ex);
@@ -115,18 +131,23 @@ internal class DeviceOperator : ICScannerDeviceDelegate
 
     public override void DidScanToBandData(ICScannerDevice scanner, ICScannerBandData data)
     {
+        _receivedBandCount++;
         var expectedBufferLength = (int) (data.FullImageHeight * data.BytesPerRow);
         _buffer ??= new MemoryStream(expectedBufferLength);
+        var bandDataLength = data.DataBuffer?.Length ?? 0;
         data.DataBuffer!.AsStream().CopyTo(_buffer);
+        Console.Error.WriteLine($"📥 [BAND #{_receivedBandCount}] Received band data: {bandDataLength} bytes, buffer now {_buffer.Length}/{expectedBufferLength} bytes");
         // TODO: The buffer gets written pretty much all at once, at least for escl - maybe we can/should reuse TwainProgressEstimator
         _scanEvents.PageProgress(_buffer.Length / (double) expectedBufferLength);
 
         if (_buffer.Length >= expectedBufferLength)
         {
-            _logger.LogDebug("DidScanToBandData buffer complete");
+            _completedImageCount++;
+            Console.Error.WriteLine($"🖼️ [IMAGE #{_completedImageCount}] Buffer complete - ready for processing (bands so far: {_receivedBandCount})");
             var fullBuffer = _buffer;
             _buffer = null;
             var tcs = new TaskCompletionSource<IMemoryImage?>();
+            var imageNum = _completedImageCount; // Capture for closure
             // Ensure sequencing is maintained when writing to the callback even if copy tasks finish out of order
             var previousCallback = _writeToCallback ?? Task.CompletedTask;
             _writeToCallback = Task.Run(async () =>
@@ -135,7 +156,13 @@ internal class DeviceOperator : ICScannerDeviceDelegate
                 var image = await tcs.Task;
                 if (image != null)
                 {
+                    Console.Error.WriteLine($"📤 [IMAGE #{imageNum}] Sending image to callback");
                     _callback(image);
+                    Console.Error.WriteLine($"📤 [IMAGE #{imageNum}] Callback completed");
+                }
+                else
+                {
+                    Console.Error.WriteLine($"⚠️ [IMAGE #{imageNum}] Image was null, not sending to callback");
                 }
             });
             Task.Run(() =>
@@ -251,7 +278,11 @@ internal class DeviceOperator : ICScannerDeviceDelegate
 
     public override void DidCompleteScan(ICScannerDevice scanner, NSError? error)
     {
-        _logger.LogDebug("DidCompleteScan {Error}", error);
+        Console.Error.WriteLine($"🏁 [SCAN COMPLETE] DidCompleteScan - received {_receivedBandCount} bands, {_completedImageCount} complete images, error: {error?.ToString() ?? "none"}");
+        if (_buffer != null && _buffer.Length > 0)
+        {
+            Console.Error.WriteLine($"⚠️ [SCAN COMPLETE] WARNING: Buffer has {_buffer.Length} bytes of incomplete image data that will be lost!");
+        }
         SetResultOrError(_scanSuccessTcs, error);
         SetResultOrError(_scanCompleteTcs, error);
     }

@@ -172,25 +172,8 @@ public class DesktopScanController : IDesktopScanController
             var enumerator = images.GetAsyncEnumerator();
             try
             {
-                while (true)
+                while (await enumerator.MoveNextAsync())
                 {
-                    // Add 90 second timeout for each image
-                    var moveNextTask = enumerator.MoveNextAsync();
-                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(90));
-                    var completedTask = await Task.WhenAny(moveNextTask.AsTask(), timeoutTask);
-
-                    if (completedTask == timeoutTask)
-                    {
-                        Log.Error("🔴 [DoScan TIMEOUT] No image received from scanner after 90 seconds - breaking scan loop");
-                        break;
-                    }
-
-                    if (!await moveNextTask)
-                    {
-                        // No more images
-                        break;
-                    }
-
                     var image = enumerator.Current;
                     Log.Info("🟠 [DoScan] Received image in DoScan, calling imageCallback");
                     imageCallback(image);

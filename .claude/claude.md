@@ -23,11 +23,16 @@ dotnet build NAPS2.App.Mac/NAPS2.App.Mac.csproj -c Release
 
 ### Important Rules
 
-⚠️ **เมื่อผู้ใช้สั่ง "build"** → ต้องถามก่อนว่า **test หรือ prod**
+⚠️ **เมื่อผู้ใช้สั่ง "build"** → **ใช้ Debug build เป็น default**
 
-- ถ้าบอก **"build test"** → build ไปที่ `/tmp/naps2-build` เลย (ไม่ต้องถาม)
-- ถ้าบอก **"build prod"** → build แบบ Release configuration
-- ถ้าบอก **"build"** อย่างเดียว → ถามก่อนว่า test หรือ prod
+- ถ้าบอก **"build"** อย่างเดียว → build แบบ **Debug** เลย (ไม่ต้องถาม)
+- ถ้าบอก **"build test"** → build ไปที่ `/tmp/naps2-build`
+- ถ้าบอก **"build prod"** หรือ **"build release"** → build แบบ Release configuration
+
+⚠️ **เมื่อผู้ใช้สั่ง "start"** → **ใช้ Debug binary เป็น default**
+
+- ถ้าบอก **"start"** แล้ว**ไม่ได้ระบุ** binary path หรือชนิด → ใช้ **Debug binary** เท่านั้น
+- Debug binary path: `/Users/piyawongmahattanasawat/Desktop/roll-v2/naps2/NAPS2.App.Mac/bin/Debug/net9-macos/NAPS2.app/Contents/MacOS/NAPS2`
 
 ## Client Configuration (Production)
 
