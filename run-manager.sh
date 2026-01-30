@@ -104,50 +104,48 @@ class ClientManagerHandler(http.server.BaseHTTPRequestHandler):
 
         print(f"Restarting {client_name}...")
 
-        # Kill existing NAPS2 processes (not shell wrappers)
-        # Use grep to find only the actual NAPS2 binary, not zsh wrappers
-        cmd = f"ps aux | grep '[N]APS2.app/Contents/MacOS/NAPS2.*{client['port']}' | grep -v grep | awk '{{print $2}}'"
-        try:
-            output = subprocess.check_output(cmd, shell=True, stderr=subprocess.DEVNULL).decode().strip()
-            if output:
-                pids = [p.strip() for p in output.split('\\n') if p.strip()]
-                print(f"Found {len(pids)} NAPS2 processes to kill: {pids}")
-
-                for pid in pids:
-                    try:
-                        # Use os.kill for better control
-                        import os
-                        import signal
-                        os.kill(int(pid), signal.SIGKILL)
-                        print(f"Killed NAPS2 process {pid}")
-                    except (ProcessLookupError, ValueError) as e:
-                        print(f"Process {pid} not found or invalid: {e}")
-                    except Exception as e:
-                        print(f"Failed to kill {pid}: {e}")
-
-            # Also kill any zombie shell wrappers
-            shell_cmd = f"ps aux | grep 'zsh.*{client['port']}' | grep -v grep | awk '{{print $2}}'"
-            shell_output = subprocess.check_output(shell_cmd, shell=True, stderr=subprocess.DEVNULL).decode().strip()
-            if shell_output:
-                shell_pids = [p.strip() for p in shell_output.split('\\n') if p.strip()]
-                print(f"Found {len(shell_pids)} shell wrappers to kill: {shell_pids}")
-                for pid in shell_pids:
-                    try:
-                        import os
-                        import signal
-                        os.kill(int(pid), signal.SIGKILL)
-                        print(f"Killed shell wrapper {pid}")
-                    except (ProcessLookupError, ValueError) as e:
-                        print(f"Shell {pid} not found or invalid: {e}")
-                    except Exception as e:
-                        print(f"Failed to kill shell {pid}: {e}")
-        except subprocess.CalledProcessError:
-            print(f"No existing processes found for {client_name}")
-            pass
-
-        # Wait for port to be released
+        import os
+        import signal
         import time
-        time.sleep(2)
+
+        # Kill all NAPS2 processes for this port using pkill
+        try:
+            subprocess.run(
+                f"pkill -9 -f 'NAPS2.*--http-port {client['port']}'",
+                shell=True,
+                stderr=subprocess.DEVNULL
+            )
+            print(f"Sent kill signal to processes using port {client['port']}")
+        except Exception as e:
+            print(f"Error sending kill signal: {e}")
+
+        # Wait for port to be completely released (up to 10 seconds)
+        max_wait = 10
+        wait_interval = 0.5
+        for i in range(int(max_wait / wait_interval)):
+            try:
+                # Check if port is still in use
+                result = subprocess.run(
+                    f"lsof -ti :{client['port']}",
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode != 0 or not result.stdout.strip():
+                    # Port is free
+                    print(f"Port {client['port']} is now free")
+                    break
+                else:
+                    print(f"Waiting for port {client['port']} to be released... ({i+1})")
+                    time.sleep(wait_interval)
+            except Exception as e:
+                print(f"Error checking port: {e}")
+                break
+        else:
+            print(f"Warning: Port {client['port']} may still be in use")
+
+        # Extra safety wait
+        time.sleep(1)
 
         # Start new process
         bin_path = "/Users/piyawongmahattanasawat/Desktop/roll-v2/naps2/NAPS2.App.Mac/bin/Debug/net9-macos/NAPS2.app/Contents/MacOS/NAPS2"

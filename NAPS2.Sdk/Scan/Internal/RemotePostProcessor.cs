@@ -86,14 +86,14 @@ internal class RemotePostProcessor : IRemotePostProcessor
 
     private IMemoryImage CropAndStretch(IMemoryImage original, ScanOptions options, IMemoryImage scaled)
     {
-        if (original.HorizontalResolution <= 0 || original.VerticalResolution <= 0)
+        if (scaled.HorizontalResolution <= 0 || scaled.VerticalResolution <= 0)
         {
             _logger.LogDebug("Skipping StretchToPageSize/CropToPageSize as there is no resolution data");
             return scaled;
         }
 
-        float width = original.Width / original.HorizontalResolution;
-        float height = original.Height / original.VerticalResolution;
+        float width = scaled.Width / scaled.HorizontalResolution;
+        float height = scaled.Height / scaled.VerticalResolution;
 
         if ((options.PageSize!.Width > options.PageSize.Height) ^ (width > height))
         {
@@ -101,15 +101,15 @@ internal class RemotePostProcessor : IRemotePostProcessor
             {
                 scaled = scaled.PerformTransform(new CropTransform(
                     0,
-                    (int) ((width - (float) options.PageSize.HeightInInches) * original.HorizontalResolution),
+                    (int) ((width - (float) options.PageSize.HeightInInches) * scaled.HorizontalResolution),
                     0,
-                    (int) ((height - (float) options.PageSize.WidthInInches) * original.VerticalResolution)
+                    (int) ((height - (float) options.PageSize.WidthInInches) * scaled.VerticalResolution)
                 ));
             }
             else
             {
-                scaled.SetResolution((float) (original.Width / options.PageSize.HeightInInches),
-                    (float) (original.Height / options.PageSize.WidthInInches));
+                scaled.SetResolution((float) (scaled.Width / options.PageSize.HeightInInches),
+                    (float) (scaled.Height / options.PageSize.WidthInInches));
             }
         }
         else
@@ -119,15 +119,15 @@ internal class RemotePostProcessor : IRemotePostProcessor
                 scaled = scaled.PerformTransform(new CropTransform
                 (
                     0,
-                    (int) ((width - (float) options.PageSize.WidthInInches) * original.HorizontalResolution),
+                    (int) ((width - (float) options.PageSize.WidthInInches) * scaled.HorizontalResolution),
                     0,
-                    (int) ((height - (float) options.PageSize.HeightInInches) * original.VerticalResolution)
+                    (int) ((height - (float) options.PageSize.HeightInInches) * scaled.VerticalResolution)
                 ));
             }
             else
             {
-                scaled.SetResolution((float) (original.Width / options.PageSize.WidthInInches),
-                    (float) (original.Height / options.PageSize.HeightInInches));
+                scaled.SetResolution((float) (scaled.Width / options.PageSize.WidthInInches),
+                    (float) (scaled.Height / options.PageSize.HeightInInches));
             }
         }
         return scaled;
