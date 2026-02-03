@@ -11,18 +11,22 @@ public class AsyncSink<T> where T : class
     public async IAsyncEnumerable<T> AsAsyncEnumerable()
     {
         int i = 0;
+        Console.Error.WriteLine($"🔄 [AsyncSink] AsAsyncEnumerable started");
         while (true)
         {
             TaskCompletionSource<T?> tcs;
             lock (this)
             {
                 tcs = _items[i++];
+                Console.Error.WriteLine($"🔄 [AsyncSink] Consumer reading item #{i}, total items in list: {_items.Count}, completed: {_completed}");
             }
             var item = await tcs.Task;
             if (item == null)
             {
+                Console.Error.WriteLine($"🔄 [AsyncSink] Received sentinel (null) at item #{i} - ending enumeration");
                 yield break;
             }
+            Console.Error.WriteLine($"🔄 [AsyncSink] Yielding item #{i}");
             yield return item;
         }
     }
@@ -33,10 +37,12 @@ public class AsyncSink<T> where T : class
         {
             if (_completed)
             {
+                Console.Error.WriteLine($"🔄 [AsyncSink] SetCompleted called but already completed");
                 return;
             }
             _completed = true;
             _items.Last().SetResult(null);
+            Console.Error.WriteLine($"🔄 [AsyncSink] SetCompleted - sent sentinel (null) to item #{_items.Count}");
         }
     }
 
@@ -64,6 +70,7 @@ public class AsyncSink<T> where T : class
         {
             _items.Last().SetResult(item);
             _items.Add(CreateTcs());
+            Console.Error.WriteLine($"🔄 [AsyncSink] PutItem - added item #{_items.Count - 1}, new pending item created");
         }
     }
 }

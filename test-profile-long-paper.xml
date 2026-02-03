@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ตัวอย่าง Profile สำหรับทดสอบ Crop กระดาษยาวกว่า A4
+  สำหรับ Windows: คัดลอกไปใส่ใน profiles.xml
+  สำหรับ Mac: คัดลอกไปใส่ใน profiles.xml
+-->
+
+<ScanProfile>
+  <Version>2</Version>
+  <DisplayName>Test Long Paper Crop</DisplayName>
+  <IconID>0</IconID>
+
+  <!-- ขนาดกระดาษ: A4 -->
+  <PageSize>A4</PageSize>
+
+  <!-- Resolution: 200 DPI -->
+  <Resolution>
+    <Dpi>200</Dpi>
+  </Resolution>
+
+  <!-- ✅ สำคัญ: After-Scan Scale = 1:2 -->
+  <AfterScanScale>OneToTwo</AfterScanScale>
+
+  <!-- Bit Depth: 24-bit Color -->
+  <BitDepth>C24Bit</BitDepth>
+
+  <!-- Paper Source: Feeder (สำหรับกระดาษยาว) -->
+  <PaperSource>Feeder</PaperSource>
+
+  <!-- Page Align: Right -->
+  <PageAlign>Right</PageAlign>
+
+  <!-- Brightness & Contrast -->
+  <Brightness>0</Brightness>
+  <Contrast>0</Contrast>
+  <BrightnessContrastAfterScan>false</BrightnessContrastAfterScan>
+
+  <!-- ✅ สำคัญมาก: เปิด Crop to Page Size -->
+  <ForcePageSizeCrop>true</ForcePageSizeCrop>
+
+  <!-- ปิด Force Page Size (Stretch) -->
+  <ForcePageSize>false</ForcePageSize>
+
+  <!-- Auto Deskew -->
+  <AutoDeskew>false</AutoDeskew>
+
+  <!-- Rotation -->
+  <RotateDegrees>0</RotateDegrees>
+
+  <!-- Quality -->
+  <Quality>75</Quality>
+  <MaxQuality>false</MaxQuality>
+
+  <!-- Other settings -->
+  <UseNativeUI>false</UseNativeUI>
+  <IsDefault>true</IsDefault>
+
+  <!-- WIA Settings (for Windows) -->
+  <WiaOffsetWidth>false</WiaOffsetWidth>
+  <WiaRetryOnFailure>false</WiaRetryOnFailure>
+  <WiaDelayBetweenScans>false</WiaDelayBetweenScans>
+  <WiaDelayBetweenScansSeconds>2.0</WiaDelayBetweenScansSeconds>
+  <WiaVersion>Default</WiaVersion>
+
+  <!-- TWAIN Settings -->
+  <TwainImpl>Default</TwainImpl>
+  <TwainProgress>false</TwainProgress>
+
+  <!-- Blank Page Detection -->
+  <ExcludeBlankPages>false</ExcludeBlankPages>
+  <BlankPageWhiteThreshold>70</BlankPageWhiteThreshold>
+  <BlankPageCoverageThreshold>15</BlankPageCoverageThreshold>
+
+  <!-- Duplex -->
+  <FlipDuplexedPages>false</FlipDuplexedPages>
+
+  <!-- Auto Save: ปิด -->
+  <EnableAutoSave>false</EnableAutoSave>
+</ScanProfile>

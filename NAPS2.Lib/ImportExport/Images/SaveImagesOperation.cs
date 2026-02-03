@@ -30,6 +30,7 @@ internal class SaveImagesOperation : OperationBase
     public bool Start(string fileName, Placeholders placeholders, IList<ProcessedImage> images,
         ImageSettings imageSettings, string? overwriteFile = null, bool batch = false)
     {
+        Log.Info($"💾 [SaveImagesOp] Start ENTER - fileName={fileName}, images.Count={images.Count}");
         Status = new OperationStatus
         {
             MaxProgress = images.Count
@@ -77,10 +78,12 @@ internal class SaveImagesOperation : OperationBase
 
                 int i = 0;
                 int digits = (int) Math.Floor(Math.Log10(images.Count)) + 1;
+                Log.Info($"💾 [SaveImagesOp] Starting loop - total images to save: {images.Count}");
                 foreach (ProcessedImage image in images)
                 {
                     if (CancelToken.IsCancellationRequested)
                     {
+                        Log.Info($"💾 [SaveImagesOp] Cancelled at image {i}/{images.Count}");
                         return false;
                     }
                     Status.CurrentProgress = i;
@@ -109,8 +112,10 @@ internal class SaveImagesOperation : OperationBase
                     {
                         Status.StatusText = string.Format(MiscResources.SavingFormat, Path.GetFileName(subFileName));
                         InvokeStatusChanged();
+                        Log.Info($"💾 [SaveImagesOp] Saving single image to {subFileName}");
                         DoSaveImage(image, subFileName, format, imageSettings);
                         FirstFileSaved = subFileName;
+                        Log.Info($"💾 [SaveImagesOp] Single image saved successfully");
                     }
                     else
                     {
@@ -118,7 +123,9 @@ internal class SaveImagesOperation : OperationBase
                             digits);
                         Status.StatusText = string.Format(MiscResources.SavingFormat, Path.GetFileName(fileNameN));
                         InvokeStatusChanged();
+                        Log.Info($"💾 [SaveImagesOp] Saving image {i + 1}/{images.Count} to {fileNameN}");
                         DoSaveImage(image, fileNameN, format, imageSettings);
+                        Log.Info($"💾 [SaveImagesOp] Image {i + 1}/{images.Count} saved successfully");
 
                         if (i == 0)
                         {
@@ -127,6 +134,7 @@ internal class SaveImagesOperation : OperationBase
                     }
                     i++;
                 }
+                Log.Info($"💾 [SaveImagesOp] All images saved - total: {i}/{images.Count}");
 
                 return FirstFileSaved != null;
             }

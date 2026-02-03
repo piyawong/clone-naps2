@@ -16,7 +16,7 @@ echo "Manages clients: client01-05 (ports 9061-9065)"
 echo ""
 
 # For now, create a simple Python server since we need to compile C#
-python3 <<'PYTHON_SCRIPT'
+python3 -u <<'PYTHON_SCRIPT'
 import http.server
 import socketserver
 import json
@@ -59,8 +59,11 @@ class ClientManagerHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path.startswith('/clients/') and self.path.endswith('/restart'):
             parts = self.path.split('/')
+            print(f"DEBUG: path = {self.path}")
+            print(f"DEBUG: parts = {parts}")
             if len(parts) >= 3:
                 client_name = parts[2]
+                print(f"DEBUG: extracted client_name = '{client_name}'")
                 self.handle_restart(client_name)
             else:
                 self.send_error(400, "Invalid request")
@@ -97,11 +100,14 @@ class ClientManagerHandler(http.server.BaseHTTPRequestHandler):
         self.send_json(result)
 
     def handle_restart(self, client_name):
+        print(f"DEBUG: handle_restart called with client_name = '{client_name}'")
         client = next((c for c in self.clients if c["name"] == client_name), None)
         if not client:
+            print(f"DEBUG: Client '{client_name}' not found in clients list")
             self.send_error(404, f"Client '{client_name}' not found")
             return
 
+        print(f"DEBUG: Found client = {client}")
         print(f"Restarting {client_name}...")
 
         import os
@@ -110,8 +116,10 @@ class ClientManagerHandler(http.server.BaseHTTPRequestHandler):
 
         # Kill all NAPS2 processes for this port using pkill
         try:
+            kill_cmd = f"pkill -9 -f 'NAPS2.*--http-port {client['port']}'"
+            print(f"DEBUG: Running kill command: {kill_cmd}")
             subprocess.run(
-                f"pkill -9 -f 'NAPS2.*--http-port {client['port']}'",
+                kill_cmd,
                 shell=True,
                 stderr=subprocess.DEVNULL
             )
@@ -152,6 +160,7 @@ class ClientManagerHandler(http.server.BaseHTTPRequestHandler):
         data_path = client["dataPath"].replace("~", subprocess.os.path.expanduser("~"))
         cmd = [bin_path, "--http-port", str(client["port"]), "--profile", client["name"], "--naps2-data", data_path]
 
+        print(f"DEBUG: Starting command: {' '.join(cmd)}")
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(f"Started {client_name}")
 

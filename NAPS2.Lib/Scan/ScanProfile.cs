@@ -192,16 +192,15 @@ public enum ScanBitDepth
 /// </summary>
 public enum ScanDpi
 {
-    Dpi100,
-    Dpi150,
     Dpi200,
+    Dpi225,
+    Dpi250,
+    Dpi275,
     Dpi300,
-    Dpi400,
-    Dpi600,
-    Dpi800,
-    Dpi1200,
-    Dpi2400,
-    Dpi4800
+    Dpi325,
+    Dpi350,
+    Dpi375,
+    Dpi400
 }
 
 /// <summary>
@@ -332,26 +331,24 @@ public static class ScanEnumExtensions
     {
         switch (enumValue)
         {
-            case ScanDpi.Dpi100:
-                return 100;
-            case ScanDpi.Dpi150:
-                return 150;
             case ScanDpi.Dpi200:
                 return 200;
+            case ScanDpi.Dpi225:
+                return 225;
+            case ScanDpi.Dpi250:
+                return 250;
+            case ScanDpi.Dpi275:
+                return 275;
             case ScanDpi.Dpi300:
                 return 300;
+            case ScanDpi.Dpi325:
+                return 325;
+            case ScanDpi.Dpi350:
+                return 350;
+            case ScanDpi.Dpi375:
+                return 375;
             case ScanDpi.Dpi400:
                 return 400;
-            case ScanDpi.Dpi600:
-                return 600;
-            case ScanDpi.Dpi800:
-                return 800;
-            case ScanDpi.Dpi1200:
-                return 1200;
-            case ScanDpi.Dpi2400:
-                return 2400;
-            case ScanDpi.Dpi4800:
-                return 4800;
             default:
                 throw new ArgumentException();
         }

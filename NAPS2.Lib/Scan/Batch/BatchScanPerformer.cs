@@ -176,6 +176,7 @@ public class BatchScanPerformer : IBatchScanPerformer
         {
             var scan = new List<ProcessedImage>();
             int pageNumber = 1;
+            Log.Info($"📋 [BatchScan] InputOneScan ENTER - scanNumber={scanNumber}");
             _progressCallback(scanNumber == -1
                 ? string.Format(MiscResources.BatchStatusPage, pageNumber++)
                 : string.Format(MiscResources.BatchStatusScanPage, pageNumber++, scanNumber + 1));
@@ -183,34 +184,44 @@ public class BatchScanPerformer : IBatchScanPerformer
             try
             {
                 await DoScan(scanNumber, scan, pageNumber);
+                Log.Info($"📋 [BatchScan] DoScan completed - scanNumber={scanNumber}, pages received: {scan.Count}");
             }
             catch (OperationCanceledException)
             {
+                Log.Info($"📋 [BatchScan] Scan cancelled - scanNumber={scanNumber}, partial pages: {scan.Count}");
                 _scans.Add(scan);
                 throw;
             }
             if (scan.Count == 0)
             {
+                Log.Info($"📋 [BatchScan] No pages received - scanNumber={scanNumber}, returning false");
                 // Presume cancelled
                 return false;
             }
             _scans.Add(scan);
+            Log.Info($"📋 [BatchScan] Added scan to list - scanNumber={scanNumber}, total scans now: {_scans.Count}");
             return true;
         }
 
         private async Task DoScan(int scanNumber, List<ProcessedImage> scan, int pageNumber)
         {
+            Log.Info($"📋 [BatchScan.DoScan] ENTER - scanNumber={scanNumber}");
             var handle = Invoker.Current.InvokeGet(() => (_batchForm as Window)?.NativeHandle ?? IntPtr.Zero);
             var images =
                 _scanPerformer.PerformScan(_profile, _scanParams, handle, _cancelToken);
+            Log.Info($"📋 [BatchScan.DoScan] PerformScan returned, starting enumeration");
+            int imageCount = 0;
             await foreach(var image in images)
             {
+                imageCount++;
                 scan.Add(image);
+                Log.Info($"📋 [BatchScan.DoScan] Image #{imageCount} added to scan list - scanNumber={scanNumber}");
                 _cancelToken.ThrowIfCancellationRequested();
                 _progressCallback(scanNumber == -1
                     ? string.Format(MiscResources.BatchStatusPage, pageNumber++)
                     : string.Format(MiscResources.BatchStatusScanPage, pageNumber++, scanNumber + 1));
             }
+            Log.Info($"📋 [BatchScan.DoScan] Enumeration completed - scanNumber={scanNumber}, total images: {imageCount}");
         }
 
         private bool PromptForNextScan()

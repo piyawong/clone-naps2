@@ -170,18 +170,25 @@ public class DesktopScanController : IDesktopScanController
             Log.Info("🟠 [DoScan] Starting await foreach loop");
 
             var enumerator = images.GetAsyncEnumerator();
+            int imageCount = 0;
             try
             {
+                Log.Info("🟠 [DoScan] Starting MoveNextAsync loop");
                 while (await enumerator.MoveNextAsync())
                 {
+                    imageCount++;
                     var image = enumerator.Current;
-                    Log.Info("🟠 [DoScan] Received image in DoScan, calling imageCallback");
+                    Log.Info($"🟠 [DoScan] Received image #{imageCount} in DoScan, calling imageCallback");
                     imageCallback(image);
+                    Log.Info($"🟠 [DoScan] imageCallback completed for image #{imageCount}");
                 }
+                Log.Info($"🟠 [DoScan] MoveNextAsync returned false - total images received: {imageCount}");
             }
             finally
             {
+                Log.Info($"🟠 [DoScan] Disposing enumerator - total images processed: {imageCount}");
                 await enumerator.DisposeAsync();
+                Log.Info("🟠 [DoScan] Enumerator disposed");
             }
 
             Log.Info("🟠 [DoScan] Foreach completed, bringing form to front");

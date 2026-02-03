@@ -150,9 +150,12 @@ internal class DeviceOperator : ICScannerDeviceDelegate
             var imageNum = _completedImageCount; // Capture for closure
             // Ensure sequencing is maintained when writing to the callback even if copy tasks finish out of order
             var previousCallback = _writeToCallback ?? Task.CompletedTask;
+            Console.Error.WriteLine($"🔗 [IMAGE #{imageNum}] Chaining callback - previous task exists: {_writeToCallback != null}");
             _writeToCallback = Task.Run(async () =>
             {
+                Console.Error.WriteLine($"⏳ [IMAGE #{imageNum}] Waiting for previous callback to complete");
                 await previousCallback;
+                Console.Error.WriteLine($"⏳ [IMAGE #{imageNum}] Previous callback done, waiting for image processing");
                 var image = await tcs.Task;
                 if (image != null)
                 {
